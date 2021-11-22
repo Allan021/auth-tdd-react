@@ -9,7 +9,11 @@ import { Login } from "./Login";
 import { setupServer } from "msw/node";
 import { handlers } from "../mocks/handlers";
 import { rest } from "msw";
-import { httpUnexpectedError } from "../constants/httpConstants";
+import {
+  httpInvalidCredentials,
+  httpSuccess,
+  httpUnexpectedError,
+} from "../constants/httpConstants";
 import { act } from "react-dom/test-utils";
 
 beforeEach(() => render(<Login />));
@@ -28,6 +32,15 @@ afterAll(() => {
 afterEach(() => {
   server.resetHandlers();
 });
+
+interface LoginBody {
+  email: string;
+  password: string;
+}
+interface LoginResponse {
+  username: string;
+  firstName: string;
+}
 
 const getSubmitButton = () =>
   screen.getByRole("button", { name: /subir datos/i });
@@ -198,8 +211,7 @@ describe("In a unexpected server error, the form page must display the error mes
     server.use(
       rest.post("/login", (req, res, ctx) =>
         res(
-          ctx.status(httpUnexpectedError),
-          ctx.json({ message: "Unexpected error, please try again" })
+          ctx.status(httpUnexpectedError, "Unexpected error, please try again")
         )
       )
     );
@@ -217,5 +229,24 @@ describe("In a unexpected server error, the form page must display the error mes
     // expect(
     //   await screen.findByText(/unexpected error, please try again/i)
     // ).toBeInTheDocument();
+  });
+
+  test("In the invalid credentials response, the form page must display the error message “The email or password are not correct” from the api", () => {
+    server.use(
+      rest.post<LoginBody, any>("/login", (req, res, ctx) => {
+        const { email, password } = req.body;
+
+        if (email !== "rigth@gmail.com" || password !== "Allan123456:xd") {
+          return res(
+            ctx.status(
+              httpInvalidCredentials,
+              "The email or password are not correct"
+            )
+          );
+        } else {
+          return res(ctx.status(httpSuccess));
+        }
+      })
+    );
   });
 });
