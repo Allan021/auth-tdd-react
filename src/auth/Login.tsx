@@ -1,6 +1,13 @@
-import { Button, TextField } from "@material-ui/core";
+import {
+  Button,
+  CircularProgress,
+  Snackbar,
+  TextField,
+} from "@material-ui/core";
 import React, { useCallback, useState } from "react";
+import { httpSuccess, httpUnexpectedError } from "../constants/httpConstants";
 import { Login as LoginInterface } from "../interfaces/Login";
+import { LoginService } from "./services/auth";
 
 export const initialValues = {
   email: "",
@@ -14,7 +21,7 @@ const validateEmail = (email: string) => {
   return regex.test(email);
 };
 const validatePassword = (password: string) => {
-  const passwordRulesRegex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})/;
+  const passwordRulesRegex = /^(?=\w*\d)(?=\w*[A-Z])(?=\w*[a-z])\S{8,16}$/;
 
   return passwordRulesRegex.test(password);
 };
@@ -24,10 +31,14 @@ export const Login = () => {
 
   const [formValues, setFormValues] = useState<LoginInterface>(initialValues);
 
+  const [isSaving, setisSaving] = useState(false);
+
+  const [unexpetedError, setUnexpetedError] = useState("");
   const { email, password } = formValues;
 
+  const [isOpen, setIsOpen] = useState(false);
   const handleSubmit = useCallback(
-    (e) => {
+    async (e) => {
       e.preventDefault();
 
       if (!email || !password) {
@@ -38,6 +49,22 @@ export const Login = () => {
       }
       setEmailErrors("");
       setPasswordError("");
+      setisSaving(true);
+
+      try {
+        setisSaving(true);
+        const response = await LoginService({ email, password });
+        console.log(response);
+        if (!response.ok) {
+          throw response;
+        }
+      } catch (err: any) {
+        const data = await err.json();
+        setUnexpetedError(data.message);
+        setIsOpen(true);
+      } finally {
+        setisSaving(false);
+      }
     },
     [email, password]
   );
@@ -47,6 +74,9 @@ export const Login = () => {
       ...previousValues,
       [e.target.name]: e.target.value,
     }));
+  }, []);
+  const handleClose = useCallback((e) => {
+    setIsOpen(false);
   }, []);
 
   const handleBlurEmail = useCallback(
@@ -65,7 +95,7 @@ export const Login = () => {
     (e) => {
       if (!validatePassword(password)) {
         setPasswordError(
-          "The password input should contain at least: 8 characters, one upper case  letter, one number and one special character"
+          "The password input should contain at least: 8 characters, one upper case letter, one number and one special character"
         );
         return;
       }
@@ -77,7 +107,20 @@ export const Login = () => {
   return (
     <div>
       <form onSubmit={handleSubmit}>
+        {isSaving && <CircularProgress data-testid="loading-indicator" />}
+
         <h1>Login Page</h1>
+        <Snackbar
+          anchorOrigin={{
+            vertical: "top",
+            horizontal: "center",
+          }}
+          open={isOpen}
+          autoHideDuration={6000}
+          onClose={handleClose}
+          message={unexpetedError}
+        />
+
         <TextField
           id="email"
           type="email"
@@ -99,7 +142,9 @@ export const Login = () => {
           onBlur={handleBlurPassword}
           onChange={handleChange}
         />
-        <Button type="submit">Subir Datos</Button>
+        <Button disabled={isSaving} type="submit">
+          Subir Datos
+        </Button>
       </form>
     </div>
   );
