@@ -1,151 +1,148 @@
-import {
-  Button,
-  CircularProgress,
-  Snackbar,
-  TextField,
-} from "@material-ui/core";
-import React, { useCallback, useState } from "react";
-import { httpSuccess, httpUnexpectedError } from "../constants/httpConstants";
-import { Login as LoginInterface } from "../interfaces/Login";
+import { useCallback, useState } from "react";
+import TextField from "@material-ui/core/TextField";
+import Button from "@material-ui/core/Button";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import Snackbar from "@material-ui/core/Snackbar";
 import { LoginService } from "./services/auth";
 
-export const initialValues = {
-  email: "",
-  password: "",
-};
+const passwordValidationsMsg =
+  "The password must contain at least 8 characters, one upper case letter, one number and one special character";
 
 const validateEmail = (email: string) => {
-  const regex =
-    /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+  const regex = /^([A-Za-z0-9_\-.])+@([A-Za-z0-9_\-.])+\.([A-Za-z]{2,4})$/;
 
   return regex.test(email);
 };
+
 const validatePassword = (password: string) => {
-  const passwordRulesRegex = /^(?=\w*\d)(?=\w*[A-Z])(?=\w*[a-z])\S{8,16}$/;
+  const passwordRulesRegex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})/;
 
   return passwordRulesRegex.test(password);
 };
-export const Login = () => {
-  const [emailErrors, setEmailErrors] = useState("");
-  const [passwordErrors, setPasswordError] = useState("");
 
-  const [formValues, setFormValues] = useState<LoginInterface>(initialValues);
-
-  const [isSaving, setisSaving] = useState(false);
-
-  const [unexpetedError, setUnexpetedError] = useState("");
-  const { email, password } = formValues;
-
+export const LoginPage = () => {
+  const [emailValidationMessage, setEmailValidationMessage] = useState("");
+  const [passwordValidationMessage, setPasswordValidationMessage] =
+    useState("");
+  const [formValues, setFormValues] = useState<{
+    email: string;
+    password: string;
+  }>({ email: "", password: "" });
+  const [isFetching, setIsFetching] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const validateForm = useCallback(() => {
+    const { email, password } = formValues;
+
+    const isEmailEmpty = !email;
+    const isPasswordEmpty = !password;
+
+    if (isEmailEmpty) {
+      setEmailValidationMessage("The email is required");
+    }
+
+    if (isPasswordEmpty) {
+      setPasswordValidationMessage("The password is required");
+    }
+
+    return isEmailEmpty || isPasswordEmpty;
+  }, [formValues]);
+
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
 
-      if (!email || !password) {
-        setEmailErrors("The email is required");
-
-        setPasswordError("The password is required");
+      if (validateForm()) {
         return;
       }
-      setEmailErrors("");
-      setPasswordError("");
-      setisSaving(true);
+      const { email, password } = formValues;
 
       try {
-        setisSaving(true);
+        setIsFetching(true);
         const response = await LoginService({ email, password });
-        console.log(response);
+
         if (!response.ok) {
           throw response;
         }
       } catch (err: any) {
         const data = await err.json();
-        setUnexpetedError(data.message);
+        setErrorMessage(data.message);
         setIsOpen(true);
       } finally {
-        setisSaving(false);
+        setIsFetching(false);
       }
     },
-    [email, password]
+    [formValues, validateForm]
   );
 
-  const handleChange = useCallback((e) => {
-    setFormValues((previousValues) => ({
-      ...previousValues,
-      [e.target.name]: e.target.value,
-    }));
-  }, []);
-  const handleClose = useCallback((e) => {
-    setIsOpen(false);
-  }, []);
+  const handleChange = useCallback(
+    ({ target: { value, name } }) => {
+      setFormValues({ ...formValues, [name]: value });
+    },
+    [formValues]
+  );
 
-  const handleBlurEmail = useCallback(
-    (e) => {
-      if (!validateEmail(email)) {
-        setEmailErrors(
-          "The email value should contain the proper email format"
-        );
-        return;
-      }
-      setEmailErrors("");
-    },
-    [email]
-  );
-  const handleBlurPassword = useCallback(
-    (e) => {
-      if (!validatePassword(password)) {
-        setPasswordError(
-          "The password input should contain at least: 8 characters, one upper case letter, one number and one special character"
-        );
-        return;
-      }
-      setPasswordError("");
-    },
-    [password]
-  );
+  const handleBlurEmail = useCallback(() => {
+    if (!validateEmail(formValues.email)) {
+      setEmailValidationMessage(
+        'The email is invalid. Example: john.doe@mail.com"'
+      );
+      return;
+    }
+
+    setEmailValidationMessage("");
+  }, [formValues.email]);
+
+  const handleBlurPassword = useCallback(() => {
+    if (!validatePassword(formValues.password)) {
+      setPasswordValidationMessage(passwordValidationsMsg);
+      return;
+    }
+
+    setPasswordValidationMessage("");
+  }, [formValues.password]);
+
+  const handleClose = () => setIsOpen(false);
 
   return (
-    <div>
+    <>
+      <h1>Login Page</h1>
+      {isFetching && <CircularProgress data-testid="loading-indicator" />}
       <form onSubmit={handleSubmit}>
-        {isSaving && <CircularProgress data-testid="loading-indicator" />}
-
-        <h1>Login Page</h1>
-        <Snackbar
-          anchorOrigin={{
-            vertical: "top",
-            horizontal: "center",
-          }}
-          open={isOpen}
-          autoHideDuration={6000}
-          onClose={handleClose}
-          message={unexpetedError}
-        />
-
         <TextField
-          id="email"
-          type="email"
           label="email"
+          id="email"
           name="email"
-          helperText={emailErrors}
-          value={email}
+          helperText={emailValidationMessage}
+          onChange={handleChange}
           onBlur={handleBlurEmail}
-          onChange={handleChange}
+          value={formValues.email}
         />
-
         <TextField
-          type="password"
-          id="password"
           label="password"
-          helperText={passwordErrors}
-          value={password}
+          id="password"
+          type="password"
           name="password"
-          onBlur={handleBlurPassword}
+          helperText={passwordValidationMessage}
           onChange={handleChange}
+          onBlur={handleBlurPassword}
+          value={formValues.password}
         />
-        <Button disabled={isSaving} type="submit">
-          Subir Datos
+        <Button disabled={isFetching} type="submit">
+          Send
         </Button>
       </form>
-    </div>
+      <Snackbar
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "center",
+        }}
+        open={isOpen}
+        autoHideDuration={6000}
+        onClose={handleClose}
+        message={errorMessage}
+      />
+    </>
   );
 };

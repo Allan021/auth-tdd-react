@@ -5,5 +5,6 @@ interface login {
 export const LoginService = (formValues: login) =>
   fetch("/login", {
     body: JSON.stringify(formValues),
+    headers: { "Content-Type": "application/json" },
     method: "POST",
   });
