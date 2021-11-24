@@ -107,7 +107,7 @@ describe("when the user fills and blur the email input with invalid email, and t
     fireEvent.blur(emailInput);
 
     expect(
-      screen.getByText(/the email is invalid. Example: john.doe@mail.com"/i)
+      screen.getByText(/the email is invalid. Example: john.doe@mail.com/i)
     ).toBeInTheDocument();
 
     fireEvent.change(emailInput, {
@@ -116,7 +116,7 @@ describe("when the user fills and blur the email input with invalid email, and t
     fireEvent.blur(emailInput);
 
     expect(
-      screen.queryByText(/the email is invalid. Example: john.doe@mail.com"/i)
+      screen.queryByText(/the email is invalid. Example: john.doe@mail.com/i)
     ).not.toBeInTheDocument();
   });
 });
