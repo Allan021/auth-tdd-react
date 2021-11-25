@@ -11,7 +11,7 @@ const AppRouter = () => {
       <Route path="/" exact>
         <LoginPage />
       </Route>
-      <PrivateRoute>
+      <PrivateRoute path="/admin" isAuth={isAuth}>
         <AdminPage />
       </PrivateRoute>
       <Route path="/employee" exact>
